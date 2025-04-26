@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>管理者ページ - 自習履歴一覧</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f4f4f4;
+      padding: 2em;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+    }
+    .student-section {
+      margin-bottom: 50px;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    table {
+      margin: auto;
+      width: 90%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .total-time {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: #2196F3;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1976D2;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 全ユーザー自習履歴一覧（管理者）</h1>
+  <div id="allHistory"></div>
+  <button onclick="logout()">ログアウト</button>
+
+  <script>
+    const currentUser = localStorage.getItem('loggedInStudent');
+    if (currentUser !== 'Master') {
+      alert('アクセスが許可されていません');
+      window.location.href = 'loginpage.html';
+    }
+
+    function formatTotalTime(seconds) {
+      const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+      const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function renderAllHistory() {
+      const container = document.getElementById('allHistory');
+      container.innerHTML = '';
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('studyHistory_')) {
+          const student = key.replace('studyHistory_', '');
+          const history = JSON.parse(localStorage.getItem(key) || '[]');
+
+          let section = document.createElement('div');
+          section.className = 'student-section';
+          section.innerHTML = `<h2>👤 ${student}</h2>`;
+
+          let table = document.createElement('table');
+          table.innerHTML = `
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>開始</th>
+                <th>終了</th>
+                <th>学習時間</th>
+                <th>できたこと</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${history.map(entry => `
+                <tr>
+                  <td>${entry.date}</td>
+                  <td>${entry.start}</td>
+                  <td>${entry.end}</td>
+                  <td>${entry.durationStr}</td>
+                  <td>${entry.note || ''}</td>
+                </tr>`).join('')}
+            </tbody>
+          `;
+
+          // 合計時間計算
+          let totalSeconds = 0;
+          history.forEach(entry => {
+            const [h, m, s] = entry.durationStr.split(':').map(Number);
+            totalSeconds += h * 3600 + m * 60 + s;
+          });
+
+          let total = document.createElement('div');
+          total.className = 'total-time';
+          total.textContent = `合計自習時間: ${formatTotalTime(totalSeconds)}`;
+
+          section.appendChild(table);
+          section.appendChild(total);
+          container.appendChild(section);
+        }
+      }
+    }
+
+    function logout() {
+      if (confirm('ログアウトしますか？')) {
+        localStorage.removeItem('loggedInStudent');
+        window.location.href = 'loginpage.html';
+      }
+    }
+
+    window.onload = () => {
+      renderAllHistory();
+    }
+  </script>
+</body>
+</html>

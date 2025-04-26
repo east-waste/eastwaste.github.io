@@ -1,0 +1,271 @@
+<!-- studylog.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>自習時間管理</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2em;
+      background-color: #f4f4f4;
+      text-align: center;
+    }
+    button {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .time-display {
+      margin-top: 20px;
+      font-size: 1.1em;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    table {
+      margin: 30px auto;
+      border-collapse: collapse;
+      width: 90%;
+      max-width: 800px;
+      background-color: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .total-time {
+      font-weight: bold;
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+    .elapsed {
+      margin-top: 10px;
+      font-size: 1.1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>自習時間管理</h1>
+  <h2>ようこそ、<span id="studentName">ゲスト</span> さん！</h2>
+  <button onclick="startStudy()">📗 開始</button>
+  <button onclick="endStudy()">📕 終了</button>
+  <button onclick="logout()" style="background-color: #2196F3;">ログアウト</button>
+
+  <div class="time-display" id="output">
+    <p>開始時間: <span id="startTime">00:00:00</span></p>
+    <p>終了時間: <span id="endTime">00:00:00</span></p>
+    <p class="elapsed">経過時間: <span id="elapsedTime">00:00:00</span></p>
+  </div>
+
+  <h2>📊 自習履歴</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>開始時間</th>
+        <th>終了時間</th>
+        <th>学習時間</th>
+        <th>できたこと</th>
+        <th>削除</th>
+      </tr>
+    </thead>
+    <tbody id="historyTable"></tbody>
+  </table>
+
+  <div id="pagination" style="margin-top: 20px;"></div>
+  <div class="total-time" id="totalTimeDisplay">合計自習時間: 00:00:00</div>
+
+  <button onclick="resetAll()" style="background-color: #f44336; margin-top: 20px;">履歴を全てリセット</button>
+
+  <script>
+    let currentStart = null;
+    let currentStartDate = null;
+    let intervalId = null;
+    let currentPage = 1;
+    const itemsPerPage = 10;
+
+    const studentId = localStorage.getItem('loggedInStudent');
+    if (!studentId) {
+      alert('ログインしてください');
+      window.location.href = 'loginpage.html';
+    } else {
+      document.getElementById('studentName').textContent = studentId;
+    }
+
+    function formatTime(date) {
+      return date.toLocaleTimeString('ja-JP', { hour12: false });
+    }
+
+    function formatDate(date) {
+      return date.toLocaleDateString('ja-JP');
+    }
+
+    function calculateMinutes(start, end) {
+      const [sh, sm, ss] = start.split(':').map(Number);
+      const [eh, em, es] = end.split(':').map(Number);
+      const startDate = new Date(0, 0, 0, sh, sm, ss);
+      const endDate = new Date(0, 0, 0, eh, em, es);
+      let diff = (endDate - startDate) / 1000;
+      if (diff < 0) diff += 86400;
+      return (diff / 60).toFixed(1);
+    }
+
+    function calculateTime(start, end) {
+      const [sh, sm, ss] = start.split(':').map(Number);
+      const [eh, em, es] = end.split(':').map(Number);
+      const startDate = new Date(0, 0, 0, sh, sm, ss);
+      const endDate = new Date(0, 0, 0, eh, em, es);
+      let diff = (endDate - startDate) / 1000;
+      if (diff < 0) diff += 86400;
+      const hours = String(Math.floor(diff / 3600));
+      const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+      const seconds = String(Math.floor(diff % 60)).padStart(2, '0');
+      return `${hours}:${minutes}:${seconds}`;
+    }
+
+    function updateOngoingTime() {
+      if (!currentStart) return;
+      const now = formatTime(new Date());
+      document.getElementById('endTime').textContent = now;
+      document.getElementById('elapsedTime').textContent = calculateTime(currentStart, now);
+    }
+
+    function updateTotalTime(history) {
+      let totalSec = 0;
+      history.forEach(entry => {
+        const [h, m, s] = entry.durationStr.split(':').map(Number);
+        totalSec += h * 3600 + m * 60 + s;
+      });
+      const h = String(Math.floor(totalSec / 3600));
+      const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      const s = String(totalSec % 60).padStart(2, '0');
+      document.getElementById('totalTimeDisplay').textContent = `合計自習時間: ${h}:${m}:${s}`;
+    }
+
+    function loadHistory(page = 1) {
+      const key = 'studyHistory_' + studentId;
+      const history = JSON.parse(localStorage.getItem(key) || '[]');
+      const reversed = history.slice().reverse();
+      const pagedData = reversed.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+      const table = document.getElementById('historyTable');
+      table.innerHTML = '';
+      pagedData.forEach((entry, i) => {
+        const originalIndex = history.length - 1 - ((page - 1) * itemsPerPage + i);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${entry.date}</td>
+          <td>${entry.start}</td>
+          <td>${entry.end}</td>
+          <td>${entry.durationStr}</td>
+          <td><input type="text" value="${entry.note || ''}" onchange="updateNote(${originalIndex}, this.value)"></td>
+          <td><button onclick="deleteEntry(${originalIndex})">🗑削除</button></td>
+        `;
+        table.appendChild(row);
+      });
+      updatePaginationControls(history.length, page);
+      updateTotalTime(history);
+      currentPage = page;
+    }
+
+    function updatePaginationControls(totalItems, currentPage) {
+      const pagination = document.getElementById('pagination');
+      pagination.innerHTML = '';
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+      for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.style.margin = '0 5px';
+        btn.style.backgroundColor = i === currentPage ? '#2196F3' : '#e0e0e0';
+        btn.style.color = i === currentPage ? 'white' : 'black';
+        btn.onclick = () => loadHistory(i);
+        pagination.appendChild(btn);
+      }
+    }
+
+    function updateNote(index, newNote) {
+      const key = 'studyHistory_' + studentId;
+      const history = JSON.parse(localStorage.getItem(key) || '[]');
+      history[index].note = newNote;
+      localStorage.setItem(key, JSON.stringify(history));
+    }
+
+    function deleteEntry(index) {
+      if (!confirm('この履歴を削除しますか？')) return;
+      const key = 'studyHistory_' + studentId;
+      const history = JSON.parse(localStorage.getItem(key) || '[]');
+      history.splice(index, 1);
+      localStorage.setItem(key, JSON.stringify(history));
+      loadHistory();
+    }
+
+    function startStudy() {
+      const now = new Date();
+      const time = formatTime(now);
+      const date = formatDate(now);
+      currentStart = time;
+      currentStartDate = date;
+      document.getElementById('startTime').textContent = time;
+      document.getElementById('endTime').textContent = time;
+      document.getElementById('elapsedTime').textContent = '00:00:00';
+      clearInterval(intervalId);
+      intervalId = setInterval(updateOngoingTime, 1000);
+    }
+
+    function endStudy() {
+      if (!currentStart || !currentStartDate) {
+        alert('先に「開始」ボタンを押してください');
+        return;
+      }
+      const now = formatTime(new Date());
+      const duration = calculateMinutes(currentStart, now);
+      const durationStr = calculateTime(currentStart, now);
+      const key = 'studyHistory_' + studentId;
+      const history = JSON.parse(localStorage.getItem(key) || '[]');
+      history.push({ date: currentStartDate, start: currentStart, end: now, duration, durationStr, note: '' });
+      localStorage.setItem(key, JSON.stringify(history));
+      clearInterval(intervalId);
+      currentStart = null;
+      currentStartDate = null;
+      document.getElementById('startTime').textContent = '00:00:00';
+      document.getElementById('endTime').textContent = '00:00:00';
+      document.getElementById('elapsedTime').textContent = '00:00:00';
+      loadHistory();
+    }
+
+    function logout() {
+      if (confirm('ログアウトしますか？')) {
+        localStorage.removeItem('loggedInStudent');
+        window.location.href = 'loginpage.html';
+      }
+    }
+
+    function resetAll() {
+      if (confirm('本当に全履歴を削除しますか？')) {
+        localStorage.removeItem('studyHistory_' + studentId);
+        loadHistory();
+      }
+    }
+
+    window.onload = () => {
+      loadHistory();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!-- loginpage.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ログイン</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+      text-align: center;
+      padding-top: 100px;
+    }
+    input {
+      padding: 10px;
+      margin: 10px;
+      font-size: 1em;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1.1em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>ログイン</h1>
+  <input type="text" id="studentId" placeholder="LOGIN ID">
+  <input type="password" id="password" placeholder="PASSWORD">
+  <br>
+  <button onclick="login()">ログイン</button>
+
+  <script>
+    const studentsDatabase = {
+      "山田太郎": "1234",
+      "佐藤花子": "5678"
+    };
+
+    function login() {
+      const studentId = document.getElementById('studentId').value;
+      const password = document.getElementById('password').value;
+
+      if (studentsDatabase[studentId] && studentsDatabase[studentId] === password) {
+        localStorage.setItem('loggedInStudent', studentId);
+        window.location.href = 'studylog.html';
+      } else {
+        alert('ログイン情報が間違っています');
+      }
+    }
+  </script>
+</body>
+</html>

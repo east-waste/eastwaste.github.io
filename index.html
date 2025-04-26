@@ -1,4 +1,3 @@
-<!-- loginpage.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -34,10 +33,20 @@
   <br>
   <button onclick="login()">ログイン</button>
 
+<p style="margin-top: 20px; color: #555;">
+  メモ<br>
+  ID：山田太郎　Pass：1234（SampleUser1）<br>
+  ID：佐藤花子　Pass：5678（SampleUser2）<br>
+  ID：Master　　Pass：master（MasterUser）<br>
+
+  管理者（ID: Master / Pass: master）は全記録を閲覧できます。
+</p>
+
   <script>
     const studentsDatabase = {
       "山田太郎": "1234",
-      "佐藤花子": "5678"
+      "佐藤花子": "5678",
+      "Master": "master"
     };
 
     function login() {
@@ -46,7 +55,12 @@
 
       if (studentsDatabase[studentId] && studentsDatabase[studentId] === password) {
         localStorage.setItem('loggedInStudent', studentId);
-        window.location.href = 'studylog.html';
+
+        if (studentId === "Master") {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = 'studylog.html';
+        }
       } else {
         alert('ログイン情報が間違っています');
       }

@@ -104,7 +104,7 @@
     const studentId = localStorage.getItem('loggedInStudent');
     if (!studentId) {
       alert('ログインしてください');
-      window.location.href = 'loginpage.html';
+      window.location.href = 'index.html';
     } else {
       document.getElementById('studentName').textContent = studentId;
     }
@@ -252,7 +252,7 @@
     function logout() {
       if (confirm('ログアウトしますか？')) {
         localStorage.removeItem('loggedInStudent');
-        window.location.href = 'loginpage.html';
+        window.location.href = 'index.html';
       }
     }
 

@@ -62,7 +62,7 @@
     const currentUser = localStorage.getItem('loggedInStudent');
     if (currentUser !== 'Master') {
       alert('アクセスが許可されていません');
-      window.location.href = 'loginpage.html';
+      window.location.href = 'index.html';
     }
 
     function formatTotalTime(seconds) {
@@ -129,7 +129,7 @@
     function logout() {
       if (confirm('ログアウトしますか？')) {
         localStorage.removeItem('loggedInStudent');
-        window.location.href = 'loginpage.html';
+        window.location.href = 'index.html';
       }
     }
 
